@@ -12,8 +12,7 @@ IMG_SIZE = (48, 48)  # common for FER
 BATCH_SIZE = 64
 EPOCHS = 40
 DATA_DIR = "data"  # expects data/train and data/val folders
-MODEL_DIR = "models"
-MODEL_PATH = os.path.join(MODEL_DIR, "emotion_model.h5")
+MODEL_PATH = "emotion_model.h5"
 NUM_CLASSES = None  # inferred
 
 def build_model(input_shape=(48,48,1), num_classes=7):

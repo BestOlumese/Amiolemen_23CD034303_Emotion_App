@@ -12,11 +12,16 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
 # CONFIG
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "emotion_model.h5")
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+MODEL_FILENAME = "emotion_model.h5"   # since your model is in root
+MODEL_PATH = os.path.join(BASE_DIR, MODEL_FILENAME)
 UPLOAD_FOLDER = "uploads"
 DB_PATH = "database/users.db"
 IMG_SIZE = (48, 48)  # must match model
+
+print("Base directory:", BASE_DIR)
+print("Looking for model at:", MODEL_PATH)
+print("Files here:", os.listdir(BASE_DIR))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
