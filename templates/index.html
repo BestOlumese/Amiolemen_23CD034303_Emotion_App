@@ -1,103 +1,61 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Emotion Detection</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="container">
-    <h1>Emotion Detection Web App</h1>
+    <div class="container">
+        <header>
+            <h1>🎭 Emotion Detection AI</h1>
+            <p>Upload an image or use live camera to detect emotions</p>
+        </header>
 
-    <section class="upload">
-      <h2>Upload an image</h2>
-      <form id="uploadForm" method="post" enctype="multipart/form-data">
-        <input type="text" id="nameUpload" placeholder="Your name (optional)" />
-        <input type="file" id="imageFile" accept="image/*" />
-        <button type="button" id="uploadBtn">Upload & Predict</button>
-      </form>
-    </section>
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>Upload Image</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="name">Your Name (optional):</label>
+                        <input type="text" id="name" name="name" placeholder="Enter your name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="image">Select Image:</label>
+                        <input type="file" id="image" name="image" accept="image/*" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Detect Emotion</button>
+                </form>
+            </div>
 
-    <section class="webcam">
-      <h2>Live webcam</h2>
-      <video id="video" autoplay playsinline width="320" height="240"></video>
-      <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-      <div>
-        <input type="text" id="nameCam" placeholder="Your name (optional)" />
-        <button id="snapBtn">Capture & Predict</button>
-      </div>
-    </section>
+            <div class="result-section" id="resultSection" style="display: none;">
+                <h2>Detection Result</h2>
+                <div class="result-card">
+                    <img id="resultImage" src="" alt="Result">
+                    <div class="result-info">
+                        <h3 id="emotionText"></h3>
+                        <p id="confidenceText"></p>
+                    </div>
+                </div>
+            </div>
 
-    <section class="result">
-      <h2>Result</h2>
-      <div id="resultText">No prediction yet.</div>
-      <img id="resultImage" src="" alt="" style="max-width:320px; display:none;"/>
-    </section>
-  </div>
+            <div class="live-section">
+                <h2>Live Detection</h2>
+                <p>Use your webcam for real-time emotion detection</p>
+                <a href="/live_feed" class="btn-secondary">Start Live Detection</a>
+            </div>
 
-  <script>
-    // frontend logic: file upload
-    document.getElementById('uploadBtn').onclick = async () => {
-      const fileInput = document.getElementById('imageFile');
-      const name = document.getElementById('nameUpload').value || 'Anonymous';
-      if (!fileInput.files.length) {
-        alert('Choose an image file first');
-        return;
-      }
-      const form = new FormData();
-      form.append('image', fileInput.files[0]);
-      form.append('name', name);
+            <div class="history-section">
+                <h2>Detection History</h2>
+                <p>View previous emotion detection results</p>
+                <a href="/history" class="btn-tertiary">View History</a>
+            </div>
+        </div>
+    </div>
 
-      const res = await fetch('/predict', { method: 'POST', body: form });
-      const data = await res.json();
-      showResult(data);
-    };
-
-    // webcam setup
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    async function startWebcam() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (e) {
-        console.error('Webcam access denied or not available', e);
-      }
-    }
-    startWebcam();
-
-    document.getElementById('snapBtn').onclick = async () => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/png'); // base64
-      const name = document.getElementById('nameCam').value || 'Anonymous';
-      const res = await fetch('/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl, name })
-      });
-      const data = await res.json();
-      showResult(data, dataUrl);
-    };
-
-    function showResult(data, imageDataUrl=null) {
-      if (data.error) {
-        document.getElementById('resultText').innerText = 'Error: ' + data.error;
-        return;
-      }
-      const txt = `Predicted: ${data.predicted_emotion} (confidence: ${(data.confidence*100).toFixed(1)}%)`;
-      document.getElementById('resultText').innerText = txt;
-
-      if (imageDataUrl) {
-        document.getElementById('resultImage').src = imageDataUrl;
-        document.getElementById('resultImage').style.display = 'block';
-      } else if (data.image_path) {
-        document.getElementById('resultImage').src = data.image_path;
-        document.getElementById('resultImage').style.display = 'block';
-      }
-    }
-  </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

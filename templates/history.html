@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Detection History</h1>
+            <p>Previous emotion detection results</p>
+        </header>
+
+        <div class="main-content">
+            <div style="background: white; padding: 30px; border-radius: 15px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #667eea; color: white;">
+                            <th style="padding: 12px; text-align: left;">Name</th>
+                            <th style="padding: 12px; text-align: left;">Emotion</th>
+                            <th style="padding: 12px; text-align: left;">Confidence</th>
+                            <th style="padding: 12px; text-align: left;">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in history %}
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 12px;">{{ record[1] or 'Anonymous' }}</td>
+                            <td style="padding: 12px;">{{ record[3] }}</td>
+                            <td style="padding: 12px;">{{ "%.2f"|format(record[4] * 100) }}%</td>
+                            <td style="padding: 12px;">{{ record[5] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if not history %}
+                <p style="text-align: center; padding: 20px; color: #666;">
+                    No detection history available yet.
+                </p>
+                {% endif %}
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="btn-primary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

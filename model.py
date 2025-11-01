@@ -1,102 +1,75 @@
-# model.py
-import os
-import numpy as np
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import numpy as np
+import cv2
+import os
 
-# CONFIG
-IMG_SIZE = (48, 48)  # common for FER
-BATCH_SIZE = 64
-EPOCHS = 40
-DATA_DIR = "data"  # expects data/train and data/val folders
-MODEL_PATH = "emotion_model.h5"
-NUM_CLASSES = None  # inferred
+class EmotionDetector:
+    def __init__(self, model_path='trained_model.h5'):
+        self.model_path = model_path
+        self.emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+        self.model = self.load_model()
+    
+    def load_model(self):
+        """Load pre-trained model or create a new one"""
+        try:
+            model = tf.keras.models.load_model(self.model_path)
+            print("Pre-trained model loaded successfully")
+        except:
+            print("Creating new model architecture...")
+            model = self.create_model()
+        return model
+    
+    def create_model(self):
+        """Create model architecture (this would be your trained model)"""
+        model = Sequential([
+            Conv2D(32, (3,3), activation='relu', input_shape=(48,48,1)),
+            MaxPooling2D(2,2),
+            Conv2D(64, (3,3), activation='relu'),
+            MaxPooling2D(2,2),
+            Conv2D(128, (3,3), activation='relu'),
+            MaxPooling2D(2,2),
+            Flatten(),
+            Dense(512, activation='relu'),
+            Dropout(0.5),
+            Dense(7, activation='softmax')
+        ])
+        
+        model.compile(optimizer='adam',
+                     loss='categorical_crossentropy',
+                     metrics=['accuracy'])
+        return model
+    
+    def preprocess_image(self, image):
+        """Preprocess image for model prediction"""
+        # Convert to grayscale
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+        
+        # Resize to 48x48
+        gray = cv2.resize(gray, (48, 48))
+        
+        # Normalize pixel values
+        gray = gray / 255.0
+        
+        # Reshape for model input
+        gray = gray.reshape(1, 48, 48, 1)
+        
+        return gray
+    
+    def predict_emotion(self, image):
+        """Predict emotion from image"""
+        processed_image = self.preprocess_image(image)
+        predictions = self.model.predict(processed_image)
+        emotion_index = np.argmax(predictions[0])
+        confidence = np.max(predictions[0])
+        
+        return self.emotions[emotion_index], float(confidence)
 
-def build_model(input_shape=(48,48,1), num_classes=7):
-    model = Sequential()
-
-    model.add(Conv2D(32, (3,3), activation='relu', input_shape=input_shape))
-    model.add(BatchNormalization())
-    model.add(Conv2D(32,(3,3), activation='relu'))
-    model.add(MaxPooling2D((2,2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv2D(64,(3,3), activation='relu'))
-    model.add(BatchNormalization())
-    model.add(Conv2D(64,(3,3), activation='relu'))
-    model.add(MaxPooling2D((2,2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv2D(128,(3,3), activation='relu'))
-    model.add(MaxPooling2D((2,2)))
-    model.add(Dropout(0.25))
-
-    model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(num_classes, activation='softmax'))
-
-    model.compile(optimizer=Adam(learning_rate=1e-4),
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-    return model
-
-def main():
-    train_dir = os.path.join(DATA_DIR, "train")
-    test_dir = os.path.join(DATA_DIR, "test")
-    if not os.path.exists(train_dir) or not os.path.exists(test_dir):
-        raise Exception("Please create data/train and data/test folders with emotion subfolders.")
-
-    # We'll use grayscale images
-    train_datagen = ImageDataGenerator(
-        rescale=1./255,
-        rotation_range=10,
-        width_shift_range=0.1,
-        height_shift_range=0.1,
-        zoom_range=0.1,
-        horizontal_flip=True
-    )
-
-    val_datagen = ImageDataGenerator(rescale=1./255)
-
-    train_gen = train_datagen.flow_from_directory(
-        train_dir,
-        target_size=IMG_SIZE,
-        color_mode='grayscale',
-        batch_size=BATCH_SIZE,
-        class_mode='categorical'
-    )
-    val_gen = val_datagen.flow_from_directory(
-        test_dir,
-        target_size=IMG_SIZE,
-        color_mode='grayscale',
-        batch_size=BATCH_SIZE,
-        class_mode='categorical'
-    )
-
-    global NUM_CLASSES
-    NUM_CLASSES = train_gen.num_classes
-    print("Detected classes:", train_gen.class_indices)
-
-    model = build_model(input_shape=(IMG_SIZE[0], IMG_SIZE[1], 1), num_classes=NUM_CLASSES)
-
-    os.makedirs(MODEL_DIR, exist_ok=True)
-
-    checkpoint = ModelCheckpoint(MODEL_PATH, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
-    early = EarlyStopping(monitor='val_accuracy', patience=7, restore_best_weights=True)
-
-    history = model.fit(
-        train_gen,
-        validation_data=val_gen,
-        epochs=EPOCHS,
-        callbacks=[checkpoint, early]
-    )
-
-    model.save(MODEL_PATH)
-    print(f"Saved trained model to {MODEL_PATH}")
-
-if __name__ == "__main__":
-    main()
+# Create a global detector instance
+emotion_detector = EmotionDetector()

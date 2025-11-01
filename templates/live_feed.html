@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Emotion Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📹 Live Emotion Detection</h1>
+            <p>Real-time emotion detection using your webcam</p>
+        </header>
+
+        <div class="main-content">
+            <div style="background: white; padding: 20px; border-radius: 15px; text-align: center;">
+                <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border-radius: 10px;">
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="btn-primary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
