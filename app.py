@@ -13,7 +13,7 @@ from tensorflow.keras.preprocessing.image import img_to_array
 
 # CONFIG
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models/emotion_model.h5")
+MODEL_PATH = os.path.join(BASE_DIR, "emotion_model.h5")
 UPLOAD_FOLDER = "uploads"
 DB_PATH = "database/users.db"
 IMG_SIZE = (48, 48)  # must match model
