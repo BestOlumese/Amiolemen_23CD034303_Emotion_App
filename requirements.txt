@@ -58,7 +58,7 @@ tensorboard-data-server==0.7.2
 tensorflow==2.20.0
 termcolor==3.2.0
 tokenizers==0.22.1
-torch @ file:///C:/Users/ICT/Desktop/ADMIN/PROJECTS/Amiolemen_23CD034303_Emotion_App/torch-2.9.0-cp313-cp313-win_amd64.whl#sha256=d037f1b4ffd25013be4a7bf3651a0a910c68554956c7b2c92ebe87c76475dece
+torch
 tqdm==4.67.1
 transformers==4.57.1
 typing_extensions==4.15.0
