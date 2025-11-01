@@ -5,6 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detection History</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9em;
+            min-width: 600px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .history-table thead tr {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .history-table th,
+        .history-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dddddd;
+        }
+        
+        .history-table tbody tr {
+            border-bottom: 1px solid #dddddd;
+            transition: all 0.3s;
+        }
+        
+        .history-table tbody tr:nth-of-type(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .history-table tbody tr:last-of-type {
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .history-table tbody tr:hover {
+            background-color: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .emotion-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        
+        .emotion-angry { background: #f8d7da; color: #721c24; }
+        .emotion-disgust { background: #d1ecf1; color: #0c5460; }
+        .emotion-fear { background: #fff3cd; color: #856404; }
+        .emotion-happy { background: #d4edda; color: #155724; }
+        .emotion-sad { background: #f8d7da; color: #721c24; }
+        .emotion-surprise { background: #cce7ff; color: #004085; }
+        .emotion-neutral { background: #e2e3e5; color: #383d41; }
+        
+        .confidence-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            margin-top: 5px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .no-history {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .no-history i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .btn-view {
+            padding: 6px 12px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.8em;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-view:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,39 +114,115 @@
         </header>
 
         <div class="main-content">
-            <div style="background: white; padding: 30px; border-radius: 15px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #667eea; color: white;">
-                            <th style="padding: 12px; text-align: left;">Name</th>
-                            <th style="padding: 12px; text-align: left;">Emotion</th>
-                            <th style="padding: 12px; text-align: left;">Confidence</th>
-                            <th style="padding: 12px; text-align: left;">Timestamp</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in history %}
-                        <tr style="border-bottom: 1px solid #ddd;">
-                            <td style="padding: 12px;">{{ record[1] or 'Anonymous' }}</td>
-                            <td style="padding: 12px;">{{ record[3] }}</td>
-                            <td style="padding: 12px;">{{ "%.2f"|format(record[4] * 100) }}%</td>
-                            <td style="padding: 12px;">{{ record[5] }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                
-                {% if not history %}
-                <p style="text-align: center; padding: 20px; color: #666;">
-                    No detection history available yet.
-                </p>
+            <div class="history-container">
+                {% if history %}
+                <div style="overflow-x: auto;">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Emotion</th>
+                                <th>Confidence</th>
+                                <th>Timestamp</th>
+                                <th>Image</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in history %}
+                            <tr>
+                                <td><strong>{{ record[1] or 'Anonymous' }}</strong></td>
+                                <td>
+                                    {% set emotion = record[3] %}
+                                    {% if emotion is string %}
+                                        {% set emotion_class = emotion.lower() %}
+                                    {% else %}
+                                        {% set emotion_class = 'neutral' %}
+                                    {% endif %}
+                                    <span class="emotion-badge emotion-{{ emotion_class }}">
+                                        {{ emotion }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span>
+                                            {% if record[4] is number %}
+                                                {{ "%.1f"|format(record[4] * 100) }}%
+                                            {% else %}
+                                                0.0%
+                                            {% endif %}
+                                        </span>
+                                        <div class="confidence-bar" style="flex-grow: 1;">
+                                            <div class="confidence-fill" style="width: 
+                                                {% if record[4] is number %}
+                                                    {{ record[4] * 100 }}
+                                                {% else %}
+                                                    0
+                                                {% endif %}%;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if record[5] %}
+                                        {{ record[5].split('.')[0] if '.' in record[5] else record[5] }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record[2] %}
+                                    <a href="/{{ record[2] }}" target="_blank" class="btn-view">View</a>
+                                    {% else %}
+                                    <span style="color: #6c757d;">No image</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="no-history">
+                    <div>📝</div>
+                    <h3>No Detection History</h3>
+                    <p>Start detecting emotions to see your history here!</p>
+                    <a href="/" class="btn-primary" style="margin-top: 20px; display: inline-block;">Start Detecting</a>
+                </div>
                 {% endif %}
             </div>
             
-            <div style="text-align: center; margin-top: 20px;">
+            <div style="text-align: center; margin-top: 30px;">
                 <a href="/" class="btn-primary">Back to Home</a>
+                {% if history %}
+                <button onclick="clearHistory()" class="btn-secondary" style="margin-left: 10px;">Clear History</button>
+                {% endif %}
             </div>
         </div>
     </div>
+
+    <script>
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
+                fetch('/clear_history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('History cleared successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error clearing history: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Error clearing history: ' + error);
+                });
+            }
+        }
+    </script>
 </body>
 </html>

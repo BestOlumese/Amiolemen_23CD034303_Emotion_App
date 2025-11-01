@@ -47,33 +47,11 @@ A sophisticated web application that detects human emotions from images and live
 
 ### Local Setup
 
-1. **Clone the repository**
-
-   ```bash
+```bash
    git clone https://github.com/BestOlumese/Amiolemen_23CD034303_Emotion_App.git
    cd Amiolemen_23CD034303_EMOTION_WEB_APP
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    python app.py
-   ```
-
-2. **Project Structure**
-   STUDENTS-SURNAME_MAT.NO_EMOTION_DETECTION_WEB_APP/
-   │
-   ├── app.py # Main Flask application
-   ├── model.py # Emotion detection model class
-   ├── trained_model.h5 # Pre-trained model file
-   ├── emotion_detection.db # SQLite database
-   ├── requirements.txt # Python dependencies
-   ├── link_to_my_web_app.txt # Hosting platform information
-   │
-   ├── templates/ # HTML templates
-   │ ├── index.html # Main application page
-   │ ├── live_feed.html # Live camera detection page
-   │ └── history.html # Detection history page
-   │
-   └── static/ # Static assets
-      ├── style.css # CSS stylesheets
-      ├── script.js # JavaScript functionality
-      └── uploads/ # User-uploaded images storage
+```

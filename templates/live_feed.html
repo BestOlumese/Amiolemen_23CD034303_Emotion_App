@@ -5,6 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Emotion Detection</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .video-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        #liveVideo {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online .status-dot {
+            background: #28a745;
+        }
+        
+        .status-offline .status-dot {
+            background: #dc3545;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .detection-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .info-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,14 +102,196 @@
         </header>
 
         <div class="main-content">
-            <div style="background: white; padding: 20px; border-radius: 15px; text-align: center;">
-                <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border-radius: 10px;">
+            <div class="status-indicator" id="cameraStatus">
+                <span class="status-dot"></span>
+                <span id="statusText">Initializing camera...</span>
             </div>
-            
-            <div style="text-align: center; margin-top: 20px;">
+
+            <div class="video-container">
+                <video id="liveVideo" width="640" height="480" autoplay muted style="display: none;"></video>
+                <canvas id="photoCanvas" width="640" height="480" style="display: none;"></canvas>
+                
+                <div id="videoPlaceholder" style="padding: 40px;">
+                    <div style="font-size: 4rem; margin-bottom: 20px;">📷</div>
+                    <h3>Camera Access Required</h3>
+                    <p>Please allow camera access to use live emotion detection</p>
+                    <button onclick="startCamera()" class="btn-primary" style="margin-top: 20px;">Start Camera</button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button onclick="captureEmotion()" class="btn-primary" id="captureBtn" disabled>
+                    📸 Capture & Analyze
+                </button>
+                <button onclick="startCamera()" class="btn-secondary" id="restartBtn" style="display: none;">
+                    🔄 Restart Camera
+                </button>
+                <button onclick="stopCamera()" class="btn-tertiary" id="stopBtn" style="display: none;">
+                    ⏹ Stop Camera
+                </button>
+            </div>
+
+            <div id="resultContainer" style="display: none;">
+                <div class="detection-info">
+                    <h3>Detection Result</h3>
+                    <div class="info-item">
+                        <strong>Emotion:</strong>
+                        <span id="resultEmotion" style="font-weight: bold;">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Confidence:</strong>
+                        <span id="resultConfidence">-</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Timestamp:</strong>
+                        <span id="resultTimestamp">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
                 <a href="/" class="btn-primary">Back to Home</a>
             </div>
         </div>
     </div>
+
+    <script>
+        let stream = null;
+        let videoElement = document.getElementById('liveVideo');
+        let canvas = document.getElementById('photoCanvas');
+        let ctx = canvas.getContext('2d');
+        let captureBtn = document.getElementById('captureBtn');
+        let restartBtn = document.getElementById('restartBtn');
+        let stopBtn = document.getElementById('stopBtn');
+        let videoPlaceholder = document.getElementById('videoPlaceholder');
+        let statusIndicator = document.getElementById('cameraStatus');
+        let statusText = document.getElementById('statusText');
+
+        async function startCamera() {
+            try {
+                statusIndicator.className = 'status-indicator status-online';
+                statusText.textContent = 'Starting camera...';
+                
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }, 
+                    audio: false 
+                });
+                
+                videoElement.srcObject = stream;
+                videoElement.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                captureBtn.disabled = false;
+                restartBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'inline-block';
+                
+                statusText.textContent = 'Camera active - Ready for detection';
+                
+                // Play the video
+                await videoElement.play();
+                
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                statusIndicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'Camera access denied or unavailable';
+                videoPlaceholder.innerHTML = `
+                    <div style="font-size: 4rem; margin-bottom: 20px;">❌</div>
+                    <h3>Camera Error</h3>
+                    <p>Unable to access camera. Please check permissions and try again.</p>
+                    <button onclick="startCamera()" class="btn-primary" style="margin-top: 20px;">Try Again</button>
+                `;
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            videoElement.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            captureBtn.disabled = true;
+            restartBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            
+            statusIndicator.className = 'status-indicator status-offline';
+            statusText.textContent = 'Camera stopped';
+            
+            videoPlaceholder.innerHTML = `
+                <div style="font-size: 4rem; margin-bottom: 20px;">📷</div>
+                <h3>Camera Stopped</h3>
+                <p>Camera has been stopped. Click below to restart.</p>
+                <button onclick="startCamera()" class="btn-primary" style="margin-top: 20px;">Start Camera</button>
+            `;
+        }
+
+        async function captureEmotion() {
+            if (!stream) {
+                alert('Please start the camera first!');
+                return;
+            }
+
+            // Show loading state
+            captureBtn.disabled = true;
+            captureBtn.innerHTML = '🔄 Analyzing...';
+
+            // Draw current video frame to canvas
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas to blob
+            canvas.toBlob(async (blob) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'capture.jpg');
+                    formData.append('name', 'Live Capture');
+
+                    const response = await fetch('/detect_emotion', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Show results
+                        document.getElementById('resultEmotion').textContent = data.emotion;
+                        document.getElementById('resultConfidence').textContent = data.confidence + '%';
+                        document.getElementById('resultTimestamp').textContent = new Date().toLocaleString();
+                        document.getElementById('resultContainer').style.display = 'block';
+                        
+                        // Scroll to results
+                        document.getElementById('resultContainer').scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    } else {
+                        alert('Detection failed: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Detection failed: ' + error.message);
+                } finally {
+                    // Reset button
+                    captureBtn.disabled = false;
+                    captureBtn.innerHTML = '📸 Capture & Analyze';
+                }
+            }, 'image/jpeg', 0.8);
+        }
+
+        // Auto-start camera when page loads
+        window.addEventListener('load', function() {
+            startCamera();
+        });
+
+        // Clean up when leaving page
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
 </body>
 </html>

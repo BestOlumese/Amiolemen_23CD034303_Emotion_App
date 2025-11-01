@@ -1,75 +1,106 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import numpy as np
+from transformers import ViTImageProcessor, ViTForImageClassification
+from PIL import Image
+import torch
 import cv2
-import os
+import numpy as np
+import logging
 
-class EmotionDetector:
-    def __init__(self, model_path='trained_model.h5'):
-        self.model_path = model_path
-        self.emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
-        self.model = self.load_model()
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class TransformersEmotionDetector:
+    def __init__(self):
+        self.model_name = 'abhilash88/face-emotion-detection'
+        self.processor = None
+        self.model = None
+        self.emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+        self.load_model()
     
     def load_model(self):
-        """Load pre-trained model or create a new one"""
+        """Load the transformers model and processor"""
         try:
-            model = tf.keras.models.load_model(self.model_path)
-            print("Pre-trained model loaded successfully")
-        except:
-            print("Creating new model architecture...")
-            model = self.create_model()
-        return model
-    
-    def create_model(self):
-        """Create model architecture (this would be your trained model)"""
-        model = Sequential([
-            Conv2D(32, (3,3), activation='relu', input_shape=(48,48,1)),
-            MaxPooling2D(2,2),
-            Conv2D(64, (3,3), activation='relu'),
-            MaxPooling2D(2,2),
-            Conv2D(128, (3,3), activation='relu'),
-            MaxPooling2D(2,2),
-            Flatten(),
-            Dense(512, activation='relu'),
-            Dropout(0.5),
-            Dense(7, activation='softmax')
-        ])
-        
-        model.compile(optimizer='adam',
-                     loss='categorical_crossentropy',
-                     metrics=['accuracy'])
-        return model
+            logger.info("Loading emotion detection model...")
+            self.processor = ViTImageProcessor.from_pretrained(self.model_name)
+            self.model = ViTForImageClassification.from_pretrained(self.model_name)
+            logger.info("Model loaded successfully!")
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            raise
     
     def preprocess_image(self, image):
-        """Preprocess image for model prediction"""
-        # Convert to grayscale
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
-        
-        # Resize to 48x48
-        gray = cv2.resize(gray, (48, 48))
-        
-        # Normalize pixel values
-        gray = gray / 255.0
-        
-        # Reshape for model input
-        gray = gray.reshape(1, 48, 48, 1)
-        
-        return gray
+        """Convert OpenCV image to PIL format and preprocess"""
+        try:
+            # Convert BGR to RGB
+            if len(image.shape) == 3:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            else:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            
+            # Convert to PIL Image
+            pil_image = Image.fromarray(image_rgb)
+            return pil_image
+        except Exception as e:
+            logger.error(f"Image preprocessing error: {e}")
+            raise
+    
+    def detect_faces(self, image):
+        """Simple face detection to crop the face region"""
+        try:
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            
+            if len(image.shape) == 3:
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = image
+            
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            
+            if len(faces) > 0:
+                # Return the largest face
+                x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+                face_roi = image[y:y+h, x:x+w]
+                return face_roi
+            else:
+                return image  # Return original image if no face detected
+        except Exception as e:
+            logger.warning(f"Face detection failed: {e}")
+            return image  # Return original image as fallback
     
     def predict_emotion(self, image):
-        """Predict emotion from image"""
-        processed_image = self.preprocess_image(image)
-        predictions = self.model.predict(processed_image)
-        emotion_index = np.argmax(predictions[0])
-        confidence = np.max(predictions[0])
-        
-        return self.emotions[emotion_index], float(confidence)
+        """Main method to predict emotion from image"""
+        try:
+            # First, try to detect and crop face
+            processed_image = self.detect_faces(image)
+            
+            # Convert to PIL format
+            pil_image = self.preprocess_image(processed_image)
+            
+            # Preprocess for the model
+            inputs = self.processor(pil_image, return_tensors="pt")
+            
+            # Make prediction
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)
+                predicted_class = torch.argmax(predictions, dim=-1).item()
+            
+            # Get results
+            predicted_emotion = self.emotions[predicted_class]
+            confidence = predictions[0][predicted_class].item()
+            
+            logger.info(f"Predicted: {predicted_emotion} (Confidence: {confidence:.3f})")
+            return predicted_emotion, float(confidence)
+            
+        except Exception as e:
+            logger.error(f"Prediction error: {e}")
+            # Return neutral as fallback
+            return "Neutral", 0.5
 
-# Create a global detector instance
-emotion_detector = EmotionDetector()
+# Create global instance
+try:
+    emotion_detector = TransformersEmotionDetector()
+    logger.info("Emotion detector initialized successfully!")
+except Exception as e:
+    logger.error(f"Failed to initialize emotion detector: {e}")
+    emotion_detector = None
